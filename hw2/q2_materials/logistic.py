@@ -24,7 +24,7 @@ def logistic_predict(weights, data):
     N, M = data.shape[0], data.shape[1]
     y = np.zeros((N,1))
     new_data=np.hstack((data, np.ones((N,1))))
-    y = np.dot( new_data, weights)
+    y = np.dot(new_data, weights)
     y = sigmoid(y)
     return y
 
@@ -39,6 +39,7 @@ def evaluate(targets, y):
         frac_correct : (scalar) Fraction of inputs classified correctly.
     """
     # TODO: Finish this function
+    # N = targets.shape[0]
     ce = - np.sum(np.dot(targets.T, np.log(y)))
     correct_prediction = len(zip(*np.where((y > 0.5) & (targets == 1)))) + len(zip(*np.where((y<0.5) & (targets==0))))
     frac_correct = float(correct_prediction) / len(targets)
@@ -99,16 +100,14 @@ def logistic_pen(weights, data, targets, hyperparameters):
         df:            (M+1) x 1 vector of derivative of f w.r.t. weights.
     """
     N, M = data.shape[0], data.shape[1]
-    lr = hyperparameters["learning_rate"]
     wd = hyperparameters["weight_decay"]
     y = logistic_predict(weights, data)
     w_without_b = weights[:-1,:]
     penalty = (wd/2) * np.sum(w_without_b * w_without_b)
-    print penalty
-
-    # constant = -((M/2) * np.log((2 * math.pi)/wd))
+    constant = -((M/2) * np.log((2 * math.pi)/wd)) if wd != 0 else 0
     # Removed constant since it won't actually penalize weight, and there will be issue when lambda=0
-    f = np.sum(-np.dot(targets.T,np.log(y))) - np.sum(np.dot((1-targets.T), np.log(1 - y))) + penalty
+    f = np.sum(-np.dot(targets.T,np.log(y))) - np.sum(np.dot((1-targets.T), np.log(1 - y))) + penalty + constant
     new_data = np.hstack((data, np.ones((N,1))))
-    df = np.dot(new_data.T, (y - targets)) + wd * np.sum(w_without_b)
+    reg = np.pad(wd * w_without_b, ((0,1),(0,0)), 'constant')
+    df = np.dot(new_data.T, (y - targets)) + reg
     return f, df, y

@@ -17,15 +17,15 @@ def run_logistic_regression(l=0, type='train'):
 
     # TODO: Set hyperparameters
     hyperparameters = {
-                    'learning_rate': 0.5,
+                    'learning_rate': 0.05,
                     'weight_regularization': True,
-                    'num_iterations': 4000,
+                    'num_iterations': 1000,
                     'weight_decay': l
                  }
 
     # Logistic regression weights
     # TODO:Initialize to random weights here.
-    weights = np.random.randint(0,1,(M+1,1))
+    weights = np.random.uniform(-0.5,0.5,(M + 1, 1))
 
     # Verify that your logistic function produces the right gradient.
     # diff should be very close to 0.
@@ -36,6 +36,9 @@ def run_logistic_regression(l=0, type='train'):
     ces_train = []
     ces_valid = []
     xs = []
+
+    acc_train = []
+    acc_valid = []
     for t in xrange(hyperparameters['num_iterations']):
 
         # TODO: you may need to modify this loop to create plots, etc.
@@ -50,7 +53,8 @@ def run_logistic_regression(l=0, type='train'):
 
         # update parameters
         weights = weights - hyperparameters['learning_rate'] * df / N
-
+        # weights = weights - hyperparameters['learning_rate'] * df
+        
         # Make a prediction on the valid_inputs.
         predictions_valid = logistic_predict(weights, valid_inputs)
 
@@ -59,6 +63,8 @@ def run_logistic_regression(l=0, type='train'):
         xs.append(t)
         ces_train.append(cross_entropy_train)
         ces_valid.append(cross_entropy_valid)
+        acc_train.append(frac_correct_train)
+        acc_valid.append(frac_correct_valid)
         
         # print some stats
         print ("ITERATION:{:4d}  TRAIN NLOGL:{:4.2f}  TRAIN CE:{:.6f} "
@@ -71,7 +77,15 @@ def run_logistic_regression(l=0, type='train'):
     plt.ylabel('cross entropy')
     plt.title('cross entropy for lambda={}, learning_rate={}, iteration={}'.format(l, hyperparameters['learning_rate'],hyperparameters['num_iterations']))
     plt.legend(loc='upper right')
-    plt.savefig('train pen{}.png'.format(str(l)))
+    plt.savefig('{} pen{}.png'.format(type, str(l)))
+    plt.clf()
+    plt.plot(xs, acc_train, 'r',label="train accuracy")
+    plt.plot(xs, acc_valid,'g', label="validation accuracy")
+    plt.xlabel('iteration')
+    plt.ylabel('accuracy')
+    plt.title('accuracy for lambda={}, learning_rate={}, iteration={}'.format(l, hyperparameters['learning_rate'],hyperparameters['num_iterations']))
+    plt.legend(loc='upper right')
+    plt.savefig('{} accuracy {}.png'.format(type, str(l)))
     plt.clf()
     # plt.show()
 

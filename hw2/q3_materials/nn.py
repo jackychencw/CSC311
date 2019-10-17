@@ -47,7 +47,13 @@ def InitNN(num_inputs, num_hiddens, num_outputs):
         'W3': W3,
         'b1': b1,
         'b2': b2,
-        'b3': b3
+        'b3': b3,
+        'v1': 0,
+        'v2': 0,
+        'v3': 0,
+        'v1b': 0,
+        'v2b': 0,
+        'v3b': 0
     }
     return model
 
@@ -84,12 +90,11 @@ def AffineBackward(grad_y, h, w):
     """
     ###########################
     # Insert your code here.
-    # grad_h = ...
-    # grad_w = ...
-    # grad_b = ...
-    # return grad_h, grad_w, grad_b
+    grad_h = np.dot(grad_y, w.T)
+    grad_w = np.dot(h.T, grad_y)
+    grad_b = np.sum(grad_y, axis=0)
+    return grad_h, grad_w, grad_b
     ###########################
-    raise Exception('Not implemented')
 
 
 def ReLU(z):
@@ -112,10 +117,11 @@ def ReLUBackward(grad_h, z):
     """
     ###########################
     # Insert your code here.
-    # grad_z = ...
-    # return grad_z
+    grad_z = grad_h
+    grad_z[grad_z != 1] = 0
+    return grad_z
     ###########################
-    raise Exception('Not implemented')
+    # raise Exception('Not implemented')
 
 
 def Softmax(x):
@@ -189,14 +195,21 @@ def NNUpdate(model, eps, momentum):
     ###########################
     # Insert your code here.
     # Update the weights.
-    # model['W1'] = ...
-    # model['W2'] = ...
-    # model['W3'] = ...
-    # model['b1'] = ...
-    # model['b2'] = ...
-    # model['b3'] = ...
+    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
+    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
+    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
+    model['v1b'] = momentum * model['v1b'] + eps * model['dE_db1']
+    model['v2b'] = momentum * model['v2b'] + eps * model['dE_db2']
+    model['v3b'] = momentum * model['v3b'] + eps * model['dE_db3']
+    model['W1'] -= model['v1']
+    model['W2'] -= model['v2']
+    model['W3'] -= model['v3']
+    model['b1'] -= model['v1b']
+    model['b2'] -= model['v2b']
+    model['b3'] -= model['v3b']
+
     ###########################
-    raise Exception('Not implemented')
+    # raise Exception('Not implemented')
 
 
 def Train(model, forward, backward, update, eps, momentum, num_epochs,
@@ -221,7 +234,7 @@ def Train(model, forward, backward, update, eps, momentum, num_epochs,
             - valid_acc:      Validation accuracy.
     """
     inputs_train, inputs_valid, inputs_test, target_train, target_valid, \
-        target_test = LoadData('../toronto_face.npz')
+        target_test = LoadData('./toronto_face.npz')
     rnd_idx = np.arange(inputs_train.shape[0])
     train_ce_list = []
     valid_ce_list = []
@@ -393,7 +406,7 @@ def main():
                   momentum, num_epochs, batch_size)
 
     # Uncomment if you wish to save the model.
-    # Save(model_fname, model)
+    Save(model_fname, model)
 
     # Uncomment if you wish to save the training statistics.
     # Save(stats_fname, stats)
