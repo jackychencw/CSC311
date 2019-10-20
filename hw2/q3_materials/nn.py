@@ -22,6 +22,7 @@ from __future__ import print_function
 from util import LoadData, Load, Save, DisplayPlot
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def InitNN(num_inputs, num_hiddens, num_outputs):
@@ -69,8 +70,7 @@ def Affine(x, w, b):
     Returns:
         y: Outputs
     """
-    # y = np.dot(w.T, x) + b
-    y = x.dot(w) + b
+    y = np.dot( x, w) + b
     return y
 
 
@@ -116,9 +116,9 @@ def ReLUBackward(grad_h, z):
         grad_z: Gradients wrt. the hidden state prior to activation.
     """
     ###########################
-    # Insert your code here.
-    grad_z = grad_h
-    grad_z[grad_z != 1] = 0
+    grad_relu = np.zeros(z.shape)
+    grad_relu[np.where(z>0)]= 1
+    grad_z = np.multiply(grad_h, grad_relu)
     return grad_z
     ###########################
     # raise Exception('Not implemented')
@@ -193,27 +193,24 @@ def NNUpdate(model, eps, momentum):
         momentum: Momentum.
     """
     ###########################
-    # Insert your code here.
-    # Update the weights.
-    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
-    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
-    model['v1'] = momentum * model['v1'] + eps * model['dE_dW1']
-    model['v1b'] = momentum * model['v1b'] + eps * model['dE_db1']
-    model['v2b'] = momentum * model['v2b'] + eps * model['dE_db2']
-    model['v3b'] = momentum * model['v3b'] + eps * model['dE_db3']
-    model['W1'] -= model['v1']
-    model['W2'] -= model['v2']
-    model['W3'] -= model['v3']
-    model['b1'] -= model['v1b']
-    model['b2'] -= model['v2b']
-    model['b3'] -= model['v3b']
-
+    model['v1'] = momentum * model['v1'] + (1-momentum) * model['dE_dW1']
+    model['W1'] = model['W1'] - eps * model['v1']
+    model['v2'] = momentum * model['v2'] + (1-momentum) * model['dE_dW2']
+    model['W2'] = model['W2'] - eps * model['v2']
+    model['v3'] = momentum * model['v3'] + (1-momentum) * model['dE_dW3']
+    model['W3'] = model['W3'] - eps * model['v3']
+    model['v1b'] = momentum * model['v1b'] + (1-momentum) * model['dE_db1']
+    model['b1'] = model['b1'] - eps * model['v1b']
+    model['v2b'] = momentum * model['v2b'] + (1-momentum) * model['dE_db2']
+    model['b2'] = model['b2'] - eps * model['v2b']
+    model['v3b'] = momentum * model['v3b'] + (1-momentum) * model['dE_db3']
+    model['b3'] = model['b3'] - eps * model['v3b']
     ###########################
     # raise Exception('Not implemented')
 
 
 def Train(model, forward, backward, update, eps, momentum, num_epochs,
-          batch_size):
+          batch_size, hl=0):
     """Trains a simple MLP.
 
     Args:
@@ -284,8 +281,7 @@ def Train(model, forward, backward, update, eps, momentum, num_epochs,
         train_acc_list.append((epoch, train_acc))
         valid_ce_list.append((epoch, valid_ce))
         valid_acc_list.append((epoch, valid_acc))
-        DisplayPlot(train_ce_list, valid_ce_list, 'Cross Entropy', number=0)
-        DisplayPlot(train_acc_list, valid_acc_list, 'Accuracy', number=1)
+        
 
     print()
     train_ce, train_acc = Evaluate(
@@ -305,6 +301,29 @@ def Train(model, forward, backward, update, eps, momentum, num_epochs,
         'train_acc': train_acc_list,
         'valid_acc': valid_acc_list
     }
+
+    plt.clf()
+    train = np.array(train_acc_list)
+    valid = np.array(valid_acc_list)
+    plt.plot(train[:, 0], train[:, 1], 'b', label='Train-Percent-Correct')
+    plt.plot(valid[:, 0], valid[:, 1], 'g', label='Validation-Percent-Correct')
+    plt.xlabel('Epoch')
+    plt.ylabel('percent correct')
+    plt.legend()
+    plt.title("percent correct")
+    plt.savefig(('pc_eps_{}_momentum_{}_bsize_{}_hl_{}.png').format(str(eps), str(momentum), str(batch_size), str(hl)))
+    plt.clf()
+
+    train = np.array(train_ce_list)
+    valid = np.array(valid_ce_list)
+    plt.plot(train[:, 0], train[:, 1], 'b', label='Train-CE')
+    plt.plot(valid[:, 0], valid[:, 1], 'g', label='Validation-CE')
+    plt.xlabel('Epoch')
+    plt.ylabel('Cross-Entropy')
+    plt.legend()
+    plt.title("Cross-Entropy")
+    plt.savefig(('ce_eps_{}_momentum_{}_bsize_{}_hl_{}.png').format(str(eps), str(momentum), str(batch_size), str(hl)))
+    plt.clf()
 
     return model, stats
 
@@ -332,6 +351,11 @@ def Evaluate(inputs, target, model, forward, batch_size=-1):
         ce += -np.sum(t * np.log(prediction))
         acc += (np.argmax(prediction, axis=1) == np.argmax(
             t, axis=1)).astype('float').sum()
+        for i in range(prediction.shape[0]):
+            p = prediction[i, np.argmax(prediction[i])]
+            if p < 0.14:
+                print (p)
+
     ce /= num_cases
     acc /= num_cases
     return ce, acc
@@ -401,15 +425,31 @@ def main():
     CheckGrad(model, NNForward, NNBackward, 'W1', x)
     CheckGrad(model, NNForward, NNBackward, 'b1', x)
 
-    # Train model.
-    stats = Train(model, NNForward, NNBackward, NNUpdate, eps,
-                  momentum, num_epochs, batch_size)
+    # for eps in [0.001]:
+    #     for momentum in [0.0, 0.45, 0.9]:
+    #         for batch_size in [100]:
 
-    # Uncomment if you wish to save the model.
-    Save(model_fname, model)
+    #             # Train model.
+    #             stats = Train(model, NNForward, NNBackward, NNUpdate, eps,
+    #                             momentum, num_epochs, batch_size)
+    for eps in [0.001]:
+        for momentum in [0]:
+            for batch_size in [1000]:
+                # Train model.
+                stats = Train(model, NNForward, NNBackward, NNUpdate, eps,
+                                momentum, num_epochs, batch_size)
+    momentum = 0.9
+    eps = 0.001
+    batch_size = 100
+    for num_hiddens in [[5, 32], [50,32], [100,32]]:
+        stats = Train(model, NNForward, NNBackward, NNUpdate, eps,
+                                momentum, num_epochs, batch_size, num_hiddens)
 
-    # Uncomment if you wish to save the training statistics.
-    # Save(stats_fname, stats)
+                # Uncomment if you wish to save the model.
+                # Save(model_fname, model)
+
+        # Uncomment if you wish to save the training statistics.
+        # Save(stats_fname, stats)
 
 if __name__ == '__main__':
     main()
